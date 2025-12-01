@@ -145,7 +145,8 @@ h1, h2, h3, h4, h5, h6 {
 /* Hero H1 - Barlow Condensed, All Caps */
 .hero h1,
 .bento-hero h1,
-section[class*="hero"] h1 {
+section[class*="hero"] h1,
+.hero-section-title {
   font-family: 'Barlow Condensed', 'Barlow', sans-serif;
   text-transform: uppercase;
   font-weight: 800;
