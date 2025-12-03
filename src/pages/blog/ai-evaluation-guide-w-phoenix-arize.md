@@ -54,9 +54,7 @@ Perfect for developers who want full control and integration with existing workf
 ```python
 # Using Phoenix Arize's Python SDK
 import pandas as pd
-from phoenix.client import PhoenixClient as px
-
-client = px.Client()
+from phoenix.client import Client
 
 # Create your evaluation dataset
 eval_data = pd.DataFrame({
@@ -66,7 +64,13 @@ eval_data = pd.DataFrame({
 })
 
 # Upload to Phoenix Arize
-client.upload_dataset(eval_data, dataset_name="ai_qa_evaluation")
+px_client = Client()
+dataset = px_client.datasets.create_dataset(
+    dataframe=eval_data,
+    name="ai_eval",
+    input_keys=["user_query","context"],
+    output_keys=["expected_response"],
+)
 
 ```
 
@@ -91,8 +95,8 @@ Tasks are where your AI system's logic meets evaluation data. Here's how to buil
 ```python
 def evaluate_ai_response(example):
     # Extract input data
-    user_query = example.input.get("user_message", "")
-    context = example.input.get("conversation_context", [])
+    user_query = example.input.get("user_query", "")
+    context = example.input.get("context", [])
 
     # Process through your AI system
     with suppress_tracing():  # Phoenix Arize best practice
@@ -146,11 +150,6 @@ def quality_evaluator(input=None, output=None, expected=None):
         similarity_score = calculate_similarity(output, expected)
         return similarity_score
 
-    # Context-aware evaluation
-    if input and output:
-        relevance_score = assess_relevance(input, output)
-        return relevance_score
-
 ```
 
 ### Three Types of Evaluation Outputs
@@ -166,7 +165,7 @@ def accuracy_evaluator(output, expected):
 
 ```
 
-1. **Labels (string)**: Categorical assessments
+2. **Labels (string)**: Categorical assessments
 
 ```python
 def quality_classifier(output, expected):
@@ -179,7 +178,7 @@ def quality_classifier(output, expected):
 
 ```
 
-1. **Flags (bool)**: Pass/fail determinations
+3. **Flags (bool)**: Pass/fail determinations
 
 ```python
 def safety_checker(output):
@@ -193,11 +192,12 @@ def safety_checker(output):
 Here's a complete example showing how everything fits together:
 
 ```python
-from phoenix.client import PhoenixClient as px
+from phoenix.client import Client
 from phoenix.experiments import run_experiment
 
-# Initialize Phoenix Arize client
-client = px.Client()
+# Initialize Phoenix Arize client and dataset
+px_client = Client()
+dataset = px_client.datasets.get_dataset(name="ai_eval", version_id="1")
 
 # Define your task
 def chatbot_task(example):
@@ -216,19 +216,16 @@ def safety_evaluator(output):
     return is_response_safe(output["bot_response"])
 
 # Run the evaluation experiment
-results = run_experiment(
-    dataset_name="chatbot_evaluation_v1",
+run_experiment(
+    dataset=dataset,
     task=chatbot_task,
-    evaluators={
-        "helpfulness": helpfulness_evaluator,
-        "safety": safety_evaluator
-    },
-    phoenix_client=client
+    evaluators=[
+        helpfulness_evaluator,
+        safety_evaluator,
+    ]
+    experiment_name="chatbot_eval",
 )
 
-# Analyze results in Phoenix Arize dashboard
-print(f"Average helpfulness: {results.mean('helpfulness')}")
-print(f"Safety pass rate: {results.mean('safety')}")
 ```
 
 ## Your AI Evaluation Success Framework
